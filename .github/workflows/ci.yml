@@ -50,6 +50,4 @@ jobs:
       image: ghcr.io/zsh-users/zsh:${{ matrix.version }}
     steps:
       - uses: actions/checkout@v4
-      - run: install_packages bsdmainutils make procps
-      - run: make test
-      
+      - run: zsh tests/run.zsh
