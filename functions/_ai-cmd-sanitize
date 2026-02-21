@@ -2,6 +2,7 @@
 # Sanitize AI response: strip markdown, ANSI codes, whitespace
 
 _ai-cmd-sanitize() {
+  setopt LOCAL_OPTIONS EXTENDED_GLOB
   local input="$1"
 
   # Remove markdown code fences (```bash ... ``` or ``` ... ```)

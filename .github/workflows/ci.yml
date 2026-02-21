@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint provider scripts
+        run: shellcheck -s bash -S warning providers/*.zsh
+      - name: Lint function files
+        run: shellcheck -s bash -S warning functions/_ai-cmd-*
+
+  syntax:
+    name: Syntax check (zsh -n)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check all zsh files parse correctly
+        run: |
+          failed=0
+          for f in ai-cmd.plugin.zsh providers/*.zsh functions/_ai-cmd-*; do
+            echo "Checking $f ..."
+            if ! zsh -n "$f"; then
+              echo "FAIL: $f"
+              failed=1
+            fi
+          done
+          exit $failed
+
+  test:
+    name: Tests (zsh ${{ matrix.version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - master
+          - 5.9
+          - 5.8.1
+          - 5.8
+          - 5.7.1
+          - 5.7
+          - 5.6.2
+          - 5.6.1
+          - 5.6
+          - 5.5.1
+          - 5.5
+          - 5.4.2
+          - 5.4.1
+          - 5.4
+          - 5.3.1
+          - 5.3
+          - 5.2
+          - 5.1.1
+          - 5.1
+          - 5.0.8
+          - 5.0.7
+          - 5.0.6
+          - 5.0.5
+          - 5.0.4
+          - 5.0.3
+          - 5.0.2
+          - 5.0.1
+          - 5.0.0
+          - 4.3.17
+          - 4.3.16
+          - 4.3.15
+          - 4.3.14
+          - 4.3.13
+          - 4.3.12
+          - 4.3.11
+    container:
+      image: ghcr.io/zsh-users/zsh:${{ matrix.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: install_packages jq sed
+      - name: Show zsh version
+        run: zsh --version
+      - name: Run tests
+        run: zsh tests/run.zsh
