@@ -35,9 +35,12 @@ assert_exit() {
 }
 
 # --- Load functions ---
+# Source files define the function then call it with "$@".
+# When sourced from here $@ is empty, which may error on old zsh.
+# Suppress that initial no-op invocation's stderr.
 
-source "${PROJECT_DIR}/functions/_ai-cmd-safety"
-source "${PROJECT_DIR}/functions/_ai-cmd-sanitize"
+source "${PROJECT_DIR}/functions/_ai-cmd-safety" 2>/dev/null
+source "${PROJECT_DIR}/functions/_ai-cmd-sanitize" 2>/dev/null
 
 # ===========================
 # _ai-cmd-safety tests
