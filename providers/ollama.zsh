@@ -11,10 +11,10 @@ _ai-cmd-provider-ollama() {
   local system_prompt="You are a shell command generator. The user describes a task in natural language. Output ONLY the shell command that accomplishes the task.
 Rules:
 - Output the raw command only. No markdown, no code fences, no backticks, no explanations, no comments.
-- Use standard POSIX/GNU utilities available on the user's OS.
+- CRITICAL: Read the Platform field in the context below. If it says macOS/BSD, you MUST use BSD-compatible flags and syntax. Do NOT use GNU/Linux-only options (e.g. ps --sort, grep --color=always, sed -i without '', readlink -f, etc.). macOS uses BSD coreutils, not GNU.
 - If the task requires multiple commands, chain them with && or pipes.
 - Never output dangerous commands unless the user explicitly asks for destructive operations.
-- Use the provided context (OS, PWD, files) to generate accurate commands.
+- Use the provided context (OS, PWD, files, available tools) to generate accurate commands.
 
 Context:
 ${context}"

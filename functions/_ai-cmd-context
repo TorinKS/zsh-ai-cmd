@@ -3,10 +3,31 @@
 
 _ai-cmd-context() {
   local ctx=""
-  ctx+="OS: $(uname -s) $(uname -r)\n"
+  local os_name=$(uname -s)
+
+  # Explicit platform detection — critical for correct command syntax
+  if [[ "$os_name" == "Darwin" ]]; then
+    local macos_ver=$(sw_vers -productVersion 2>/dev/null)
+    ctx+="Platform: macOS ${macos_ver} (BSD userland, NOT GNU/Linux)\n"
+    ctx+="IMPORTANT: Use BSD-compatible flags. GNU-only flags like --sort, --color=always, -r for recursive grep, etc. do NOT work. Use macOS equivalents.\n"
+  else
+    ctx+="Platform: Linux $(uname -r)\n"
+    local distro=$(command cat /etc/os-release 2>/dev/null | command grep '^PRETTY_NAME=' | cut -d= -f2 | tr -d '"')
+    [[ -n "$distro" ]] && ctx+="Distro: ${distro}\n"
+  fi
+
   ctx+="Shell: zsh ${ZSH_VERSION}\n"
   ctx+="PWD: ${PWD}\n"
   ctx+="User: ${USER}\n"
+
+  # Detect available tools (helps pick the right command)
+  local -a tools=()
+  command -v gfind &>/dev/null && tools+=(gfind)
+  command -v gsort &>/dev/null && tools+=(gsort)
+  command -v gawk &>/dev/null && tools+=(gawk)
+  command -v gsed &>/dev/null && tools+=(gsed)
+  command -v brew &>/dev/null && tools+=(homebrew)
+  (( ${#tools[@]} )) && ctx+="GNU tools available: ${(j:, :)tools}\n"
 
   # Current directory contents (abbreviated)
   ctx+="Files in PWD (first 20): $(command ls -1 2>/dev/null | head -20 | tr '\n' ', ')\n"
