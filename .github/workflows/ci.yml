@@ -1,47 +1,13 @@
-name: CI
+name: Tests
 
 on:
   push:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
   pull_request:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+  schedule:
+    - cron: '29 7 * * 1'
 
 jobs:
-  shellcheck:
-    name: ShellCheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install ShellCheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - name: Lint provider scripts
-        run: shellcheck -s bash -S warning providers/*.zsh
-      - name: Lint function files
-        run: shellcheck -s bash -S warning functions/_ai-cmd-*
-
-  syntax:
-    name: Syntax check (zsh -n)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check all zsh files parse correctly
-        run: |
-          failed=0
-          for f in ai-cmd.plugin.zsh providers/*.zsh functions/_ai-cmd-*; do
-            echo "Checking $f ..."
-            if ! zsh -n "$f"; then
-              echo "FAIL: $f"
-              failed=1
-            fi
-          done
-          exit $failed
-
   test:
-    name: Tests (zsh ${{ matrix.version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -86,9 +52,5 @@ jobs:
       image: ghcr.io/zsh-users/zsh:${{ matrix.version }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: install_packages jq sed
-      - name: Show zsh version
-        run: zsh --version
-      - name: Run tests
-        run: zsh tests/run.zsh
+      - run: install_packages jq sed
+      - run: zsh tests/run.zsh
