@@ -1,0 +1,26 @@
+#!/usr/bin/env zsh
+# Gather shell context for better AI suggestions
+
+_ai-cmd-context() {
+  local ctx=""
+  ctx+="OS: $(uname -s) $(uname -r)\n"
+  ctx+="Shell: zsh ${ZSH_VERSION}\n"
+  ctx+="PWD: ${PWD}\n"
+  ctx+="User: ${USER}\n"
+
+  # Current directory contents (abbreviated)
+  ctx+="Files in PWD (first 20): $(command ls -1 2>/dev/null | head -20 | tr '\n' ', ')\n"
+
+  # Git context if in a repo
+  if command git rev-parse --is-inside-work-tree &>/dev/null 2>&1; then
+    ctx+="Git branch: $(command git branch --show-current 2>/dev/null)\n"
+    ctx+="Git status: $(command git status --short 2>/dev/null | head -5)\n"
+  fi
+
+  # Recent history (last 5 commands)
+  ctx+="Recent commands:\n$(fc -l -5 2>/dev/null)\n"
+
+  print -r -- "$ctx"
+}
+
+_ai-cmd-context "$@"

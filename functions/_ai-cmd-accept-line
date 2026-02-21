@@ -1,0 +1,61 @@
+#!/usr/bin/env zsh
+# ZLE widget: override accept-line to intercept "# " prefixed natural language
+
+_ai-cmd-accept-line() {
+  local prefix="${AI_CMD_PREFIX:-# }"
+
+  # Check if buffer starts with the AI prefix and has content after it
+  if [[ "$BUFFER" == "${prefix}"* && ${#BUFFER} -gt ${#prefix} ]]; then
+    local nl_input="${BUFFER#${prefix}}"
+
+    # Gather context
+    local context
+    context=$(_ai-cmd-context 2>/dev/null)
+
+    # Show thinking indicator
+    POSTDISPLAY=$'\n'"  ... translating to command"
+    zle reset-prompt
+
+    # Call AI API
+    local generated_cmd
+    generated_cmd=$(_ai-cmd-call-api "$nl_input" "$context" 2>/dev/null)
+    local exit_code=$?
+
+    # Clear decorations
+    POSTDISPLAY=""
+    region_highlight=()
+
+    if [[ $exit_code -ne 0 || -z "$generated_cmd" ]]; then
+      POSTDISPLAY=$'\n'"  [!] Failed to generate command. Check API key and network."
+      zle reset-prompt
+      return 1
+    fi
+
+    # Sanitize the response
+    generated_cmd=$(_ai-cmd-sanitize "$generated_cmd")
+
+    # Replace buffer with generated command
+    BUFFER="$generated_cmd"
+    CURSOR=${#BUFFER}
+
+    # Safety check
+    if [[ "${AI_CMD_SAFETY}" == "true" ]] && ! _ai-cmd-safety "$generated_cmd"; then
+      POSTDISPLAY=$'\n'"  [!] WARNING: Potentially dangerous command! Review carefully before pressing Enter."
+      region_highlight=("0 ${#BUFFER} fg=red,bold")
+    else
+      POSTDISPLAY=$'\n'"  [ok] Press Enter to execute, Ctrl+C to cancel"
+      region_highlight=("0 ${#BUFFER} fg=green")
+    fi
+
+    zle reset-prompt
+    # Do NOT call .accept-line — let the user review and press Enter again
+    return 0
+  fi
+
+  # Not an AI command — clear decorations and pass through
+  POSTDISPLAY=""
+  region_highlight=()
+  zle .accept-line
+}
+
+_ai-cmd-accept-line "$@"

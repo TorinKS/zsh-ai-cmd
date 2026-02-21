@@ -1,0 +1,57 @@
+#!/usr/bin/env zsh
+# ZLE widget: keybinding-triggered natural language translation
+# Bound to Ctrl+X Ctrl+A by default — treats entire buffer as NL input
+
+_ai-cmd-keybind-trigger() {
+  # Skip if buffer is empty
+  if [[ -z "$BUFFER" ]]; then
+    return 0
+  fi
+
+  local nl_input="$BUFFER"
+
+  # Gather context
+  local context
+  context=$(_ai-cmd-context 2>/dev/null)
+
+  # Show thinking indicator
+  local original_buffer="$BUFFER"
+  POSTDISPLAY=$'\n'"  ... translating to command"
+  zle reset-prompt
+
+  # Call AI API
+  local generated_cmd
+  generated_cmd=$(_ai-cmd-call-api "$nl_input" "$context" 2>/dev/null)
+  local exit_code=$?
+
+  # Clear decorations
+  POSTDISPLAY=""
+  region_highlight=()
+
+  if [[ $exit_code -ne 0 || -z "$generated_cmd" ]]; then
+    BUFFER="$original_buffer"
+    POSTDISPLAY=$'\n'"  [!] Failed to generate command. Check API key and network."
+    zle reset-prompt
+    return 1
+  fi
+
+  # Sanitize the response
+  generated_cmd=$(_ai-cmd-sanitize "$generated_cmd")
+
+  # Replace buffer with generated command
+  BUFFER="$generated_cmd"
+  CURSOR=${#BUFFER}
+
+  # Safety check
+  if [[ "${AI_CMD_SAFETY}" == "true" ]] && ! _ai-cmd-safety "$generated_cmd"; then
+    POSTDISPLAY=$'\n'"  [!] WARNING: Potentially dangerous command! Review carefully before pressing Enter."
+    region_highlight=("0 ${#BUFFER} fg=red,bold")
+  else
+    POSTDISPLAY=$'\n'"  [ok] Press Enter to execute, Ctrl+C to cancel"
+    region_highlight=("0 ${#BUFFER} fg=green")
+  fi
+
+  zle reset-prompt
+}
+
+_ai-cmd-keybind-trigger "$@"

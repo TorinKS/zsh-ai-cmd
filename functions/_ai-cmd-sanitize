@@ -1,0 +1,45 @@
+#!/usr/bin/env zsh
+# Sanitize AI response: strip markdown, ANSI codes, whitespace
+
+_ai-cmd-sanitize() {
+  local input="$1"
+
+  # Remove markdown code fences (```bash ... ``` or ``` ... ```)
+  if [[ "$input" == '```'* ]]; then
+    input="${input#\`\`\`*$'\n'}"
+    input="${input%$'\n'\`\`\`}"
+    input="${input%\`\`\`}"
+  fi
+
+  # Remove inline backticks
+  input="${input#\`}"
+  input="${input%\`}"
+
+  # Strip ANSI escape sequences
+  input=$(print -r -- "$input" | command sed $'s/\x1b\[[0-9;]*m//g' 2>/dev/null)
+
+  # Trim leading/trailing whitespace
+  input="${${input##[[:space:]]#}%%[[:space:]]#}"
+
+  # If multi-line, take only lines that look like commands (skip explanatory text)
+  if [[ "$input" == *$'\n'* ]]; then
+    local -a lines=("${(@f)input}")
+    local -a cmd_lines=()
+    for line in "${lines[@]}"; do
+      # Skip empty lines and lines that look like comments/explanations
+      [[ -z "$line" ]] && continue
+      [[ "$line" == \#* ]] && continue
+      [[ "$line" == "Note:"* || "$line" == "This "* || "$line" == "The "* ]] && continue
+      cmd_lines+=("$line")
+    done
+    if (( ${#cmd_lines[@]} > 1 )); then
+      input="${(j: && :)cmd_lines}"
+    elif (( ${#cmd_lines[@]} == 1 )); then
+      input="${cmd_lines[1]}"
+    fi
+  fi
+
+  print -r -- "$input"
+}
+
+_ai-cmd-sanitize "$@"

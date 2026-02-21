@@ -1,0 +1,20 @@
+#!/usr/bin/env zsh
+# API dispatcher: routes to the configured provider
+
+_ai-cmd-call-api() {
+  local input="$1" context="$2"
+  local provider="${AI_CMD_PROVIDER:-anthropic}"
+
+  case "$provider" in
+    anthropic) _ai-cmd-provider-anthropic "$input" "$context" ;;
+    openai)    _ai-cmd-provider-openai "$input" "$context" ;;
+    ollama)    _ai-cmd-provider-ollama "$input" "$context" ;;
+    *)
+      print -u2 "ai-cmd: Unknown provider: $provider"
+      print -u2 "  Supported: anthropic, openai, ollama"
+      return 1
+      ;;
+  esac
+}
+
+_ai-cmd-call-api "$@"
