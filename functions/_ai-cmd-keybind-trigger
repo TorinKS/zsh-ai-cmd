@@ -19,10 +19,13 @@ _ai-cmd-keybind-trigger() {
   POSTDISPLAY=$'\n'"  ... translating to command"
   zle reset-prompt
 
-  # Call AI API
+  # Call AI API (capture stderr for error messages)
+  local tmp_err=$(mktemp)
   local generated_cmd
-  generated_cmd=$(_ai-cmd-call-api "$nl_input" "$context" 2>/dev/null)
+  generated_cmd=$(_ai-cmd-call-api "$nl_input" "$context" 2>"$tmp_err")
   local exit_code=$?
+  local err_msg=$(<"$tmp_err")
+  command rm -f "$tmp_err"
 
   # Clear decorations
   POSTDISPLAY=""
@@ -30,7 +33,8 @@ _ai-cmd-keybind-trigger() {
 
   if [[ $exit_code -ne 0 || -z "$generated_cmd" ]]; then
     BUFFER="$original_buffer"
-    POSTDISPLAY=$'\n'"  [!] Failed to generate command. Check API key and network."
+    local display_err="${err_msg:-Check API key and network.}"
+    POSTDISPLAY=$'\n'"  [!] ${display_err}"
     zle reset-prompt
     return 1
   fi
