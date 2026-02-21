@@ -3,8 +3,6 @@ name: Tests
 on:
   push:
   pull_request:
-  schedule:
-    - cron: '29 7 * * 1'
 
 jobs:
   test:
@@ -52,5 +50,6 @@ jobs:
       image: ghcr.io/zsh-users/zsh:${{ matrix.version }}
     steps:
       - uses: actions/checkout@v4
-      - run: install_packages jq sed
-      - run: zsh tests/run.zsh
+      - run: install_packages bsdmainutils make procps
+      - run: make test
+      
