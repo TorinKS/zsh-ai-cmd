@@ -4,35 +4,37 @@
 _ai-cmd-safety() {
   local cmd="$1"
 
-  local -a dangerous_patterns=(
-    'rm -rf /'
-    'rm -rf ~'
-    'rm -rf \*'
-    'rm -rf \.'
-    'mkfs\.'
-    'dd if=.* of=/dev/'
-    ':\(\)\{.*\}.*:'
-    'chmod -R 777 /'
-    'chmod 777 /'
-    'find .* -delete'
-    '> /dev/sd'
-    '> /dev/disk'
-    'mv .* /dev/null'
-    'wget .* | .*sh'
-    'curl .* | .*sh'
-    'shutdown'
-    'reboot'
-    'init 0'
-    'init 6'
-    'halt'
-    'poweroff'
-    'format '
-    'diskutil eraseDisk'
-    'wipefs'
+  # Uses glob patterns (not regex) for compatibility with zsh 4.3+
+  local -a dangerous_patterns
+  dangerous_patterns=(
+    '*rm -rf /*'
+    '*rm -rf ~*'
+    '*rm -rf \**'
+    '*rm -rf \.*'
+    '*mkfs.*'
+    '*dd if=* of=/dev/*'
+    '*:()\{*\}*:*'
+    '*chmod -R 777 /*'
+    '*chmod 777 /*'
+    '*find * -delete*'
+    '*> /dev/sd*'
+    '*> /dev/disk*'
+    '*mv * /dev/null*'
+    '*wget *\|*sh*'
+    '*curl *\|*sh*'
+    '*shutdown*'
+    '*reboot*'
+    '*init 0*'
+    '*init 6*'
+    '*halt*'
+    '*poweroff*'
+    '*format *'
+    '*diskutil eraseDisk*'
+    '*wipefs*'
   )
 
   for pattern in "${dangerous_patterns[@]}"; do
-    if [[ "$cmd" =~ "$pattern" ]]; then
+    if [[ "$cmd" == ${~pattern} ]]; then
       return 1
     fi
   done

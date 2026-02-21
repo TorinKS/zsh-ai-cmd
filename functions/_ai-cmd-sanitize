@@ -2,6 +2,7 @@
 # Sanitize AI response: strip markdown, ANSI codes, whitespace
 
 _ai-cmd-sanitize() {
+  setopt LOCAL_OPTIONS EXTENDED_GLOB
   local input="$1"
 
   # Remove markdown code fences (```bash ... ``` or ``` ... ```)
@@ -23,8 +24,9 @@ _ai-cmd-sanitize() {
 
   # If multi-line, take only lines that look like commands (skip explanatory text)
   if [[ "$input" == *$'\n'* ]]; then
-    local -a lines=("${(@f)input}")
-    local -a cmd_lines=()
+    local -a lines cmd_lines
+    lines=("${(@f)input}")
+    cmd_lines=()
     for line in "${lines[@]}"; do
       # Skip empty lines and lines that look like comments/explanations
       [[ -z "$line" ]] && continue
