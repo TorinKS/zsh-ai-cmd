@@ -26,7 +26,7 @@ Alternatively, type anything and press **Ctrl+X Ctrl+A** to translate the curren
 ### Oh-My-Zsh
 
 ```bash
-git clone https://github.com/USERNAME/ai-cmd ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/ai-cmd
+git clone https://github.com/TorinKS/zsh-ai-cmd ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/ai-cmd
 ```
 
 Add to your `~/.zshrc`:
@@ -38,13 +38,13 @@ plugins=(... ai-cmd)
 ### Zinit
 
 ```zsh
-zinit light USERNAME/ai-cmd
+zinit light TorinKS/zsh-ai-cmd
 ```
 
 ### Antigen
 
 ```zsh
-antigen bundle USERNAME/ai-cmd
+antigen bundle TorinKS/zsh-ai-cmd
 ```
 
 ### Manual
