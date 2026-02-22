@@ -9,8 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Require version label
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
-          LABELS='${{ toJSON(github.event.pull_request.labels.*.name) }}'
           if echo "$LABELS" | grep -q '"documentation"'; then
             echo "Documentation PR — version label not required."
             exit 0

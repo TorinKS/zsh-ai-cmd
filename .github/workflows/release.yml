@@ -19,14 +19,15 @@ jobs:
 
       - name: Determine bump type
         id: bump
+        env:
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
-          LABELS='${{ toJSON(github.event.pull_request.labels.*.name) }}'
           if echo "$LABELS" | grep -q '"major"'; then
-            echo "type=major" >> $GITHUB_OUTPUT
+            echo "type=major" >> "$GITHUB_OUTPUT"
           elif echo "$LABELS" | grep -q '"minor"'; then
-            echo "type=minor" >> $GITHUB_OUTPUT
+            echo "type=minor" >> "$GITHUB_OUTPUT"
           elif echo "$LABELS" | grep -q '"patch"'; then
-            echo "type=patch" >> $GITHUB_OUTPUT
+            echo "type=patch" >> "$GITHUB_OUTPUT"
           else
             echo "No version label, skipping."
             exit 0
@@ -35,6 +36,8 @@ jobs:
       - name: Bump version
         if: steps.bump.outputs.type != ''
         id: version
+        env:
+          BUMP_TYPE: ${{ steps.bump.outputs.type }}
         run: |
           LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1)
           if [ -z "$LATEST" ]; then LATEST="v0.0.0"; fi
@@ -42,15 +45,17 @@ jobs:
           MAJOR=$(echo "$VER" | cut -d. -f1)
           MINOR=$(echo "$VER" | cut -d. -f2)
           PATCH=$(echo "$VER" | cut -d. -f3)
-          case "${{ steps.bump.outputs.type }}" in
+          case "$BUMP_TYPE" in
             major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
             minor) MINOR=$((MINOR+1)); PATCH=0 ;;
             patch) PATCH=$((PATCH+1)) ;;
           esac
-          echo "tag=v${MAJOR}.${MINOR}.${PATCH}" >> $GITHUB_OUTPUT
+          echo "tag=v${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
 
       - name: Create and push tag
         if: steps.bump.outputs.type != ''
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+          git tag "$TAG"
+          git push origin "$TAG"
