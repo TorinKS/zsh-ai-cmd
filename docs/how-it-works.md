@@ -14,7 +14,7 @@ Press **Enter** and ai-cmd replaces it with:
 find ~ -type f -size +100M -exec ls -lh {} \;
 ```
 
-The command is highlighted green (safe) or red (dangerous). You review it, then press Enter to execute or Ctrl+C to cancel.
+The command is highlighted green (safe) or red (dangerous). You review it, then press Enter to execute, Ctrl+R to regenerate, or Ctrl+C to cancel.
 
 ## How It Triggers
 
@@ -97,6 +97,7 @@ User types: "# list docker containers sorted by size"
                           v
               User reviews & decides:
               Enter = execute
+              Ctrl+R = regenerate
               Ctrl+C = cancel
 ```
 
@@ -147,9 +148,59 @@ The result is a clean, executable command placed in your terminal buffer.
 
 Dangerous commands are still shown (highlighted in red) — the user always has the final say.
 
+## Commit Message Generation
+
+When you type `# commit`, ai-cmd switches to commit mode:
+
+1. `_ai-cmd-context-commit` gathers git context:
+   - Staged diff (or unstaged diff if nothing is staged)
+   - Diff stats, branch name, recent commits
+   - Reads `.ai-cmd` config for `commit_style` (conventional or simple)
+2. The AI generates a `git commit -m "..."` command
+3. If no changes were staged, `git add -u &&` is prepended automatically
+
+```
+# commit
+  ... generating commit message
+git add -u && git commit -m "feat(auth): add login endpoint"
+  [ok] Press Enter to execute, Ctrl+R to regenerate, Ctrl+C to cancel
+```
+
+You can add a hint: `# commit fix the login bug` to guide the message.
+
+## PR Creation
+
+When you type `# pr`, ai-cmd gathers branch context and generates a `gh pr create` command:
+
+1. `_ai-cmd-accept-line` detects the `pr` keyword
+2. Context is gathered: commits since base branch, diff stats, branch name
+3. The AI generates a `gh pr create --title "..." --body "..."` command
+
+Requires the `gh` CLI to be installed.
+
+## Regeneration
+
+Press **Ctrl+R** after a command is generated to get a different result. The plugin saves the original input (`_AI_CMD_LAST_INPUT`) and re-triggers `accept-line` to produce a new command from the same prompt.
+
+## Per-Project Config
+
+Create a `.ai-cmd` file in your git repo root:
+
+```
+commit_style=conventional
+```
+
+| Option | Values | Default |
+|--------|--------|---------|
+| `commit_style` | `conventional`, `simple` | `conventional` |
+
+- `conventional` — `feat(scope): description`
+- `simple` — plain text like `add login endpoint`
+
 ## Dependencies
 
 Only two external tools are required:
 
 - **curl** — for making API calls to providers
 - **jq** — for parsing JSON responses
+- **gh** — (optional) needed for PR creation with `# pr`
