@@ -1,0 +1,23 @@
+name: Version label
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require version label
+        run: |
+          LABELS='${{ toJSON(github.event.pull_request.labels.*.name) }}'
+          if echo "$LABELS" | grep -q '"documentation"'; then
+            echo "Documentation PR — version label not required."
+            exit 0
+          fi
+          if echo "$LABELS" | grep -qE '"(patch|minor|major)"'; then
+            echo "Version label found."
+          else
+            echo "::error::PR must have a patch, minor, or major label (or documentation to skip)."
+            exit 1
+          fi
