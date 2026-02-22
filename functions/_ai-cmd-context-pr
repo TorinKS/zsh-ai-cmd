@@ -1,0 +1,76 @@
+#!/usr/bin/env zsh
+# Gather git context for PR creation
+
+_ai-cmd-context-pr() {
+  # Must be in a git repo
+  if ! command git rev-parse --is-inside-work-tree &>/dev/null; then
+    print -u2 "Not a git repo."
+    return 1
+  fi
+
+  # Must have gh CLI
+  if ! command -v gh &>/dev/null; then
+    print -u2 "gh CLI is not installed. Install: https://cli.github.com"
+    return 1
+  fi
+
+  # Detect base branch (main or master)
+  local base_branch="main"
+  if ! command git rev-parse --verify main &>/dev/null 2>&1; then
+    if command git rev-parse --verify master &>/dev/null 2>&1; then
+      base_branch="master"
+    fi
+  fi
+
+  local current_branch
+  current_branch=$(command git branch --show-current 2>/dev/null)
+
+  if [[ "$current_branch" == "$base_branch" ]]; then
+    print -u2 "Already on ${base_branch}. Create a feature branch first."
+    return 1
+  fi
+
+  # Commits on this branch since diverging from base
+  local commits
+  commits=$(command git log --oneline "${base_branch}..HEAD" 2>/dev/null)
+
+  if [[ -z "$commits" ]]; then
+    print -u2 "No commits ahead of ${base_branch}."
+    return 1
+  fi
+
+  # Diff stat against base
+  local diff_stat
+  diff_stat=$(command git diff --stat "${base_branch}...HEAD" 2>/dev/null)
+
+  # Full diff (truncated)
+  local diff
+  diff=$(command git diff "${base_branch}...HEAD" 2>/dev/null)
+  if (( ${#diff} > 4000 )); then
+    diff="${diff[1,4000]}"$'\n'"... (diff truncated)"
+  fi
+
+  # Build context
+  local ctx=""
+  ctx+="Task: Generate a gh CLI command to create a pull request.\n"
+  ctx+="Rules:\n"
+  ctx+="- Output ONLY the gh pr create command\n"
+  ctx+="- Use this format: gh pr create --title \"title\" --body \"body\"\n"
+  ctx+="- Title: short, under 70 chars, describes the change\n"
+  ctx+="- Body: markdown with a ## Summary section (2-3 bullet points)\n"
+  ctx+="- Base the title and body on the commits and diff below\n"
+  ctx+="- Do NOT output anything except the gh command\n"
+  ctx+="\n"
+  ctx+="Current branch: ${current_branch}\n"
+  ctx+="Base branch: ${base_branch}\n"
+  ctx+="\n"
+  ctx+="Commits:\n${commits}\n"
+  ctx+="\n"
+  ctx+="Changes (stat):\n${diff_stat}\n"
+  ctx+="\n"
+  ctx+="Diff:\n${diff}\n"
+
+  print -r -- "$ctx"
+}
+
+_ai-cmd-context-pr "$@"
