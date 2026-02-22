@@ -17,9 +17,41 @@ A zsh plugin that intercepts natural language descriptions and translates them i
 2. Press **Enter**
 3. The plugin sends your description to an AI model with context (OS, directory, git status, recent commands)
 4. The generated command replaces your input — highlighted in green (or red if dangerous)
-5. Review the command, then press **Enter** to execute or **Ctrl+C** to cancel
+5. Review the command, then press **Enter** to execute, **Ctrl+R** to regenerate, or **Ctrl+C** to cancel
 
 Alternatively, type anything and press **Ctrl+X Ctrl+A** to translate the current line.
+
+## Git Commit Messages
+
+Generate conventional commit messages from your staged or unstaged changes:
+
+```
+$ # commit
+  ... generating commit message
+$ git commit -m "feat(auth): add login endpoint"
+  [ok] Press Enter to execute, Ctrl+R to regenerate, Ctrl+C to cancel
+```
+
+If no changes are staged, the plugin auto-prepends `git add -u &&` to stage tracked files first.
+
+Add a hint to guide the message:
+
+```
+$ # commit fix the login bug
+```
+
+## PR Creation
+
+Generate `gh pr create` commands from your branch context:
+
+```
+$ # pr
+  ... generating PR command
+$ gh pr create --title "feat: add commit generation" --body "..."
+  [ok] Press Enter to execute, Ctrl+R to regenerate, Ctrl+C to cancel
+```
+
+The plugin gathers commits since the base branch, diff stats, and branch name to generate an appropriate PR title and body. Requires `gh` CLI.
 
 ## Installation
 
@@ -91,6 +123,25 @@ export AI_CMD_OLLAMA_MODEL=llama3.2
 
 Generated commands are checked against a list of dangerous patterns (`rm -rf /`, `mkfs`, `dd` to disk, fork bombs, etc.). Dangerous commands are highlighted in **red** with a warning. You always review before execution — nothing runs without your second Enter press.
 
+## Per-Project Config
+
+Create a `.ai-cmd` file in your repo root to customize behavior per project:
+
+```
+commit_style=conventional
+```
+
+| Option | Values | Default | Description |
+|--------|--------|---------|-------------|
+| `commit_style` | `conventional`, `simple` | `conventional` | Commit message format |
+
+- `conventional` — `feat(scope): description`, `fix(scope): description`, etc.
+- `simple` — plain descriptions like `add login endpoint`
+
+## Regenerate
+
+Press **Ctrl+R** after a command is generated to regenerate it with the same input. Useful for getting a different commit message or command variation.
+
 ## Examples
 
 ```
@@ -108,6 +159,15 @@ $ git log --oneline --after="1 week ago" --author="$(git config user.name)"
 
 $ # find and replace foo with bar in all python files
 $ find . -name "*.py" -exec sed -i '' 's/foo/bar/g' {} +
+
+$ # commit
+$ git commit -m "feat(api): add rate limiting middleware"
+
+$ # commit fix the typo in readme
+$ git commit -m "docs: fix typo in README"
+
+$ # pr
+$ gh pr create --title "feat: add rate limiting" --body "..."
 ```
 
 ## License

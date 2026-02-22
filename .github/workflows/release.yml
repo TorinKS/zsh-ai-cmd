@@ -6,7 +6,9 @@ on:
 
 jobs:
   tag:
-    if: github.event.pull_request.merged == true
+    if: >-
+      github.event.pull_request.merged == true &&
+      !contains(github.event.pull_request.labels.*.name, 'documentation')
     runs-on: ubuntu-latest
     permissions:
       contents: write
