@@ -1,0 +1,89 @@
+#!/usr/bin/env zsh
+# Gather git context for commit message generation
+
+_ai-cmd-context-commit() {
+  # Must be in a git repo
+  if ! command git rev-parse --is-inside-work-tree &>/dev/null; then
+    print -u2 "Not a git repo."
+    return 1
+  fi
+
+  local git_root
+  git_root=$(command git rev-parse --show-toplevel 2>/dev/null)
+
+  # Check for staged changes first, then unstaged
+  local diff diff_stat needs_staging=""
+  diff=$(command git diff --cached 2>/dev/null)
+  diff_stat=$(command git diff --cached --stat 2>/dev/null)
+
+  if [[ -z "$diff" ]]; then
+    # No staged changes — check unstaged
+    diff=$(command git diff 2>/dev/null)
+    diff_stat=$(command git diff --stat 2>/dev/null)
+    if [[ -z "$diff" ]]; then
+      print -u2 "No changes to commit."
+      return 1
+    fi
+    needs_staging="true"
+  fi
+
+  # Truncate large diffs
+  if (( ${#diff} > 4000 )); then
+    diff="${diff[1,4000]}"$'\n'"... (diff truncated)"
+  fi
+
+  # Collect branch and recent commits
+  local branch
+  branch=$(command git branch --show-current 2>/dev/null)
+
+  local recent_commits
+  recent_commits=$(command git log --oneline -5 2>/dev/null)
+
+  # Read .ai-cmd config from repo root (if exists)
+  local commit_style="conventional"
+  local config_file="${git_root}/.ai-cmd"
+  if [[ -f "$config_file" ]]; then
+    local style_val
+    style_val=$(command grep '^commit_style=' "$config_file" 2>/dev/null | head -1)
+    style_val="${style_val#commit_style=}"
+    [[ -n "$style_val" ]] && commit_style="$style_val"
+  fi
+
+  # Build format instruction based on style
+  local format_rule
+  case "$commit_style" in
+    simple)
+      format_rule="Use a plain description, no type prefix. Example: git commit -m \"add login endpoint\""
+      ;;
+    *)
+      format_rule="Use conventional commit format: type(scope): description. Types: feat, fix, refactor, docs, style, test, chore, build, ci. Example: git commit -m \"feat(auth): add login endpoint\""
+      ;;
+  esac
+
+  # Build context
+  local ctx=""
+
+  # Marker for _ai-cmd-accept-line to detect staging need
+  [[ "$needs_staging" == "true" ]] && ctx+="NEEDS_STAGING\n"
+
+  ctx+="Task: Generate a git commit message for the changes below.\n"
+  ctx+="Rules:\n"
+  ctx+="- Output ONLY a single git commit command: git commit -m \"message\"\n"
+  ctx+="- ${format_rule}\n"
+  ctx+="- Subject line under 72 characters\n"
+  ctx+="- For complex changes use: git commit -m \"subject\" -m \"body\"\n"
+  ctx+="- Focus on WHAT changed and WHY, not HOW\n"
+  ctx+="- Do NOT output anything except the git commit command\n"
+  ctx+="\n"
+  ctx+="Branch: ${branch}\n"
+  ctx+="\n"
+  ctx+="Last commits:\n${recent_commits}\n"
+  ctx+="\n"
+  ctx+="Changes (stat):\n${diff_stat}\n"
+  ctx+="\n"
+  ctx+="Diff:\n${diff}\n"
+
+  print -r -- "$ctx"
+}
+
+_ai-cmd-context-commit "$@"

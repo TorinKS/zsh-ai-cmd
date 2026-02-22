@@ -1,0 +1,20 @@
+#!/usr/bin/env zsh
+# ZLE widget: regenerate the last AI command (re-sends the original input)
+
+_ai-cmd-regenerate() {
+  if [[ -z "${_AI_CMD_LAST_INPUT:-}" ]]; then
+    return 0
+  fi
+
+  # Restore the original input and re-trigger accept-line
+  BUFFER="$_AI_CMD_LAST_INPUT"
+  CURSOR=${#BUFFER}
+  POSTDISPLAY=""
+  region_highlight=()
+  zle reset-prompt
+
+  # Re-trigger generation
+  zle accept-line
+}
+
+_ai-cmd-regenerate "$@"
