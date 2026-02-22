@@ -235,6 +235,84 @@ else
 fi
 
 # ===========================
+# _ai-cmd-context-pr tests
+# ===========================
+print "\n=== _ai-cmd-context-pr ==="
+
+if ! command -v git &>/dev/null; then
+  print "  SKIP: git not available"
+else
+  source "${PROJECT_DIR}/functions/_ai-cmd-context-pr" 2>/dev/null
+
+  # Should fail outside a git repo
+  (
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    _ai-cmd-context-pr 2>/dev/null
+    exit_code=$?
+    command rm -rf "$tmp_dir"
+    exit $exit_code
+  )
+  assert_exit "pr: fail outside git repo" "1" "$?"
+
+  # Should fail on main branch (no feature branch)
+  (
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    command git init -q
+    command git config user.email "test@test.com"
+    command git config user.name "Test"
+    echo "init" > file.txt
+    command git add . && command git commit -q -m "init"
+    _ai-cmd-context-pr 2>/dev/null
+    exit_code=$?
+    command rm -rf "$tmp_dir"
+    exit $exit_code
+  )
+  assert_exit "pr: fail on main branch" "1" "$?"
+
+  # Should fail with no commits ahead of main
+  (
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    command git init -q
+    command git config user.email "test@test.com"
+    command git config user.name "Test"
+    echo "init" > file.txt
+    command git add . && command git commit -q -m "init"
+    command git checkout -q -b feat/test
+    _ai-cmd-context-pr 2>/dev/null
+    exit_code=$?
+    command rm -rf "$tmp_dir"
+    exit $exit_code
+  )
+  assert_exit "pr: fail with no commits ahead" "1" "$?"
+
+  # Should return context on feature branch with commits
+  result=$(
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    command git init -q
+    command git config user.email "test@test.com"
+    command git config user.name "Test"
+    echo "init" > file.txt
+    command git add . && command git commit -q -m "init"
+    command git checkout -q -b feat/test
+    echo "feature" > feature.txt
+    command git add . && command git commit -q -m "add feature"
+    _ai-cmd-context-pr 2>/dev/null
+    command rm -rf "$tmp_dir"
+  )
+  if [[ "$result" == *"Commits:"* && "$result" == *"feat/test"* ]]; then
+    print "  PASS: pr context on feature branch"
+    (( passed++ ))
+  else
+    print "  FAIL: pr context on feature branch"
+    (( failed++ ))
+  fi
+fi
+
+# ===========================
 # Summary
 # ===========================
 print "\n=== Results ==="

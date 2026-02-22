@@ -35,6 +35,7 @@ autoload -Uz _ai-cmd-context
 autoload -Uz _ai-cmd-safety
 autoload -Uz _ai-cmd-sanitize
 autoload -Uz _ai-cmd-context-commit
+autoload -Uz _ai-cmd-context-pr
 autoload -Uz _ai-cmd-regenerate
 
 # --- Source providers ---
