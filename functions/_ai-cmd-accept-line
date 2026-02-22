@@ -37,6 +37,28 @@ _ai-cmd-accept-line() {
       fi
 
       api_input="generate commit message${hint:+: $hint}"
+    elif [[ "$nl_input" == pr* ]]; then
+      # PR mode: gather branch context
+      local hint="${nl_input#pr}"
+      hint="${hint## }"
+
+      POSTDISPLAY=$'\n'"  ... generating PR command"
+      zle reset-prompt
+
+      local pr_err=$(mktemp)
+      context=$(_ai-cmd-context-pr 2>"$pr_err")
+      local ctx_code=$?
+      local ctx_err=$(<"$pr_err")
+      command rm -f "$pr_err"
+
+      if [[ $ctx_code -ne 0 || -z "$context" ]]; then
+        POSTDISPLAY=$'\n'"  [!] ${ctx_err:-Not a git repo or no branch to create PR from.}"
+        region_highlight=()
+        zle reset-prompt
+        return 1
+      fi
+
+      api_input="generate gh pr create command${hint:+: $hint}"
     else
       # Normal mode: natural language to command
       context=$(_ai-cmd-context 2>/dev/null)
