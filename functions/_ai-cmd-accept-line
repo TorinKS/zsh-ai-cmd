@@ -6,20 +6,50 @@ _ai-cmd-accept-line() {
 
   # Check if buffer starts with the AI prefix and has content after it
   if [[ "$BUFFER" == "${prefix}"* && ${#BUFFER} -gt ${#prefix} ]]; then
+    # Save original input for regeneration (Ctrl+R)
+    typeset -g _AI_CMD_LAST_INPUT="$BUFFER"
+
     local nl_input="${BUFFER#${prefix}}"
 
-    # Gather context
-    local context
-    context=$(_ai-cmd-context 2>/dev/null)
+    local context api_input
+    local is_commit=""
 
-    # Show thinking indicator
-    POSTDISPLAY=$'\n'"  ... translating to command"
-    zle reset-prompt
+    if [[ "$nl_input" == commit* ]]; then
+      # Commit mode: gather git context
+      is_commit="true"
+      local hint="${nl_input#commit}"
+      hint="${hint## }"
+
+      POSTDISPLAY=$'\n'"  ... generating commit message"
+      zle reset-prompt
+
+      local commit_err=$(mktemp)
+      context=$(_ai-cmd-context-commit 2>"$commit_err")
+      local ctx_code=$?
+      local ctx_err=$(<"$commit_err")
+      command rm -f "$commit_err"
+
+      if [[ $ctx_code -ne 0 || -z "$context" ]]; then
+        POSTDISPLAY=$'\n'"  [!] ${ctx_err:-Not a git repo or no changes to commit.}"
+        region_highlight=()
+        zle reset-prompt
+        return 1
+      fi
+
+      api_input="generate commit message${hint:+: $hint}"
+    else
+      # Normal mode: natural language to command
+      context=$(_ai-cmd-context 2>/dev/null)
+      api_input="$nl_input"
+
+      POSTDISPLAY=$'\n'"  ... translating to command"
+      zle reset-prompt
+    fi
 
     # Call AI API (capture stderr for error messages)
     local tmp_err=$(mktemp)
     local generated_cmd
-    generated_cmd=$(_ai-cmd-call-api "$nl_input" "$context" 2>"$tmp_err")
+    generated_cmd=$(_ai-cmd-call-api "$api_input" "$context" 2>"$tmp_err")
     local exit_code=$?
     local err_msg=$(<"$tmp_err")
     command rm -f "$tmp_err"
@@ -38,6 +68,11 @@ _ai-cmd-accept-line() {
     # Sanitize the response
     generated_cmd=$(_ai-cmd-sanitize "$generated_cmd")
 
+    # For commit mode: prepend git add -u if changes aren't staged
+    if [[ "$is_commit" == "true" && "$context" == NEEDS_STAGING* ]]; then
+      generated_cmd="git add -u && ${generated_cmd}"
+    fi
+
     # Replace buffer with generated command
     BUFFER="$generated_cmd"
     CURSOR=${#BUFFER}
@@ -47,7 +82,7 @@ _ai-cmd-accept-line() {
       POSTDISPLAY=$'\n'"  [!] WARNING: Potentially dangerous command! Review carefully before pressing Enter."
       region_highlight=("0 ${#BUFFER} fg=red,bold")
     else
-      POSTDISPLAY=$'\n'"  [ok] Press Enter to execute, Ctrl+C to cancel"
+      POSTDISPLAY=$'\n'"  [ok] Press Enter to execute, Ctrl+R to regenerate, Ctrl+C to cancel"
       region_highlight=("0 ${#BUFFER} fg=green")
     fi
 

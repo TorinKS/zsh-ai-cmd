@@ -34,6 +34,8 @@ autoload -Uz _ai-cmd-call-api
 autoload -Uz _ai-cmd-context
 autoload -Uz _ai-cmd-safety
 autoload -Uz _ai-cmd-sanitize
+autoload -Uz _ai-cmd-context-commit
+autoload -Uz _ai-cmd-regenerate
 
 # --- Source providers ---
 source "${AI_CMD_DIR}/providers/anthropic.zsh"
@@ -50,6 +52,10 @@ _ai-cmd-precmd-init() {
     zle -N _ai-cmd-keybind-trigger
     bindkey "$AI_CMD_KEYBINDING" _ai-cmd-keybind-trigger
   fi
+
+  # Ctrl+R to regenerate last AI command
+  zle -N _ai-cmd-regenerate
+  bindkey "^R" _ai-cmd-regenerate
 }
 
 autoload -Uz add-zsh-hook

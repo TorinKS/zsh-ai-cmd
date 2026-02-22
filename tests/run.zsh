@@ -132,6 +132,109 @@ pwd
 assert_eq "fence no lang" "pwd" "$result"
 
 # ===========================
+# _ai-cmd-context-commit tests
+# ===========================
+print "\n=== _ai-cmd-context-commit ==="
+
+if ! command -v git &>/dev/null; then
+  print "  SKIP: git not available"
+else
+  source "${PROJECT_DIR}/functions/_ai-cmd-context-commit" 2>/dev/null
+
+  # Should fail outside a git repo
+  (
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    _ai-cmd-context-commit 2>/dev/null
+    exit_code=$?
+    command rm -rf "$tmp_dir"
+    exit $exit_code
+  )
+  assert_exit "fail outside git repo" "1" "$?"
+
+  # Should fail with no changes
+  (
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    command git init -q
+    command git config user.email "test@test.com"
+    command git config user.name "Test"
+    echo "init" > file.txt
+    command git add . && command git commit -q -m "init"
+    _ai-cmd-context-commit 2>/dev/null
+    exit_code=$?
+    command rm -rf "$tmp_dir"
+    exit $exit_code
+  )
+  assert_exit "fail with no changes" "1" "$?"
+
+  # Should return context with unstaged changes (NEEDS_STAGING marker)
+  result=$(
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    command git init -q
+    command git config user.email "test@test.com"
+    command git config user.name "Test"
+    echo "init" > file.txt
+    command git add . && command git commit -q -m "init"
+    echo "changed" > file.txt
+    _ai-cmd-context-commit 2>/dev/null
+    command rm -rf "$tmp_dir"
+  )
+  if [[ "$result" == *"NEEDS_STAGING"* && "$result" == *"Diff:"* ]]; then
+    print "  PASS: unstaged changes context with NEEDS_STAGING"
+    (( passed++ ))
+  else
+    print "  FAIL: unstaged changes context with NEEDS_STAGING"
+    (( failed++ ))
+  fi
+
+  # Should return context with staged changes (no NEEDS_STAGING)
+  result=$(
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    command git init -q
+    command git config user.email "test@test.com"
+    command git config user.name "Test"
+    echo "init" > file.txt
+    command git add . && command git commit -q -m "init"
+    echo "changed" > file.txt
+    command git add .
+    _ai-cmd-context-commit 2>/dev/null
+    command rm -rf "$tmp_dir"
+  )
+  if [[ "$result" != *"NEEDS_STAGING"* && "$result" == *"Diff:"* ]]; then
+    print "  PASS: staged changes context without NEEDS_STAGING"
+    (( passed++ ))
+  else
+    print "  FAIL: staged changes context without NEEDS_STAGING"
+    (( failed++ ))
+  fi
+
+  # Should read .ai-cmd config
+  result=$(
+    tmp_dir=$(mktemp -d)
+    cd "$tmp_dir"
+    command git init -q
+    command git config user.email "test@test.com"
+    command git config user.name "Test"
+    echo "init" > file.txt
+    command git add . && command git commit -q -m "init"
+    echo "commit_style=simple" > .ai-cmd
+    echo "changed" > file.txt
+    _ai-cmd-context-commit 2>/dev/null
+    command rm -rf "$tmp_dir"
+  )
+  if [[ "$result" == *"plain description"* ]]; then
+    print "  PASS: .ai-cmd config simple style"
+    (( passed++ ))
+  else
+    print "  FAIL: .ai-cmd config simple style"
+    (( failed++ ))
+  fi
+fi
+
+# ===========================
 # Summary
 # ===========================
 print "\n=== Results ==="
